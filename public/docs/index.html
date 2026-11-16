@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="fa">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Golden AID — مستندات API</title>
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+  <style>
+    body { margin: 0; background: #fafafa; }
+    .docs-header { direction: rtl; padding: 20px 5%; font-family: Tahoma, sans-serif; background: #fff; border-bottom: 1px solid #ddd; line-height: 1.9; }
+    .docs-header h1 { margin: 0; font-size: 22px; }
+    .docs-header p { margin: 6px 0; }
+    .docs-header a { color: #1766a3; }
+    .swagger-ui .opblock-tag small { font-family: Tahoma, sans-serif; }
+  </style>
+</head>
+<body>
+  <header class="docs-header">
+    <h1>مستندات API فروشگاه گلدن اید</h1>
+    <p>مسیرها بر اساس بخش‌های عمومی و مدیریت دسته‌بندی شده‌اند. برای اجرای درخواست، بخش موردنظر را باز کنید و Try it out را بزنید.</p>
+    <p>برای احراز هویت، توکن دریافتی از ورود یا ثبت‌نام را در Authorize وارد کنید. عملیات مدیریت به دسترسی مدیر نیاز دارند.</p>
+    <a href="./openapi.yaml" download>دریافت فایل OpenAPI (YAML)</a>
+  </header>
+  <div id="swagger"></div>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script>
+    window.ui = SwaggerUIBundle({
+      url: './openapi.yaml',
+      dom_id: '#swagger',
+      deepLinking: true,
+      filter: true,
+      docExpansion: 'none',
+      operationsSorter: 'alpha',
+      displayRequestDuration: true,
+      defaultModelsExpandDepth: 0,
+      validatorUrl: null,
+      requestInterceptor: function (request) {
+        request.headers.Accept = 'application/json';
+        return request;
+      }
+    });
+  </script>
+</body>
+</html>

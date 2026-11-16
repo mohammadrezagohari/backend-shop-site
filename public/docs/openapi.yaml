@@ -1,0 +1,4698 @@
+openapi: 3.1.0
+info:
+  title: Golden AID API
+  version: 1.5.0
+  description: >-
+    مستندات کامل API فروشگاه گلدن اید، شامل مسیرهای عمومی، حساب کاربری و مدیریت.
+
+
+    تمام درخواست‌ها و پاسخ‌ها JSON هستند. هدر Accept: application/json را ارسال کنید.
+
+    برای مسیرهای محافظت‌شده، ابتدا ثبت‌نام یا ورود کنید و مقدار data.token را در Authorize وارد کنید (بدون
+    پیشوند Bearer). اعتبار توکن ۷ روز است؛ خروج، توکن جاری را باطل می‌کند. مسیرهای مدیریت به کاربر دارای
+    is_admin=true نیاز دارند.
+
+    سبد خرید با X-Cart-Token شناسایی می‌شود؛ مقدار data.token را از پاسخ سبد ذخیره و در درخواست‌های بعدی ارسال
+    کنید. پارامتر cart_token در query نیز پشتیبانی می‌شود. بدون توکن، سبد جدید ساخته می‌شود.
+
+    شناسه محصولات و مقالات در مسیرهای عمومی slug، شناسه سفارش عمومی public_id و شناسه منابع مدیریت عدد داخلی
+    است.
+
+    پرداخت test صرفاً شبیه‌سازی است و تراکنش بانکی واقعی ندارد. مقادیر قیمت، همان واحد عددی ذخیره‌شده در
+    فروشگاه هستند.
+
+
+    APP_ENV=develop پرداخت شبیه‌سازی و پیامک لاگ دارد. APP_ENV=production از زرین‌پال و کاوه‌نگار با کلیدهای
+    backend استفاده می‌کند. درخواست‌های پرداخت واقعی به مسیر عمومی payments ارسال می‌شوند.
+servers:
+  - url: /api/v1
+    description: API روی همین سرور
+tags:
+  - name: احراز هویت
+    description: ثبت‌نام، ورود، مشخصات کاربر و خروج
+  - name: دسته‌بندی‌ها
+    description: دسته‌بندی‌های فعال فروشگاه
+  - name: محصولات
+    description: جستجو، فیلتر و جزئیات محصول
+  - name: دیدگاه‌ها
+    description: مشاهده و ارسال دیدگاه محصول
+  - name: مقالات
+    description: مقالات منتشرشده وبلاگ
+  - name: سبد خرید
+    description: مدیریت سبد مهمان با X-Cart-Token
+  - name: سفارش‌ها
+    description: ثبت، پیگیری و سفارش‌های حساب کاربری
+  - name: پرداخت
+    description: پرداخت محیط توسعه و اتصال production زرین‌پال
+  - name: مدیریت / داشبورد
+    description: آمار مدیریتی
+  - name: مدیریت / محصولات
+    description: ایجاد، ویرایش و حذف محصولات
+  - name: مدیریت / دسته‌بندی‌ها
+    description: مدیریت دسته‌بندی‌ها
+  - name: مدیریت / سفارش‌ها
+    description: بررسی و تغییر وضعیت سفارش
+  - name: مدیریت / کاربران
+    description: فهرست کاربران و تنظیم دسترسی مدیر
+  - name: مدیریت / مقالات
+    description: مدیریت مقالات و پیش‌نویس‌ها
+  - name: مدیریت / دیدگاه‌ها
+    description: تأیید، لغو تأیید و حذف دیدگاه‌ها
+  - name: نمادها و گواهی‌ها
+    description: نمادهای فعال فوتر سایت
+  - name: مدیریت / نمادها و گواهی‌ها
+    description: مدیریت تصویر، عنوان، لینک استعلام، ترتیب و وضعیت نمادهای سایت
+  - name: اتصال پلتفرم‌ها
+    description: دریافت اطلاعات محصولات توسط ترب
+  - name: مدیریت / پلتفرم‌ها
+    description: تنظیمات غیرمحرمانه و درخواست همگام‌سازی؛ فعال‌سازی نیازمند حساب فروشندگی است
+paths:
+  /auth/register:
+    post:
+      tags:
+        - احراز هویت
+      summary: Register a customer and issue an API token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+            example:
+              name: کاربر نمونه
+              email: customer@example.com
+              password: ExamplePass123!
+      responses:
+        '201':
+          $ref: '#/components/responses/AuthSuccess'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      operationId: postAuthRegister
+  /auth/login:
+    post:
+      tags:
+        - احراز هویت
+      summary: Login and issue a seven-day API token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+            example:
+              email: customer@example.com
+              password: ExamplePass123!
+      responses:
+        '200':
+          $ref: '#/components/responses/AuthSuccess'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      operationId: postAuthLogin
+  /auth/me:
+    get:
+      tags:
+        - احراز هویت
+      summary: Return the authenticated user
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Authenticated user
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+              example:
+                data:
+                  id: 1
+                  name: example
+                  email: customer@example.com
+                  is_admin: false
+                  created_at: '2026-11-06T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+      operationId: getAuthMe
+  /auth/logout:
+    post:
+      tags:
+        - احراز هویت
+      summary: Revoke the current API token
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Message'
+              example:
+                message: example
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+      operationId: postAuthLogout
+  /categories:
+    get:
+      tags:
+        - دسته‌بندی‌ها
+      summary: List active storefront categories
+      responses:
+        '200':
+          description: Category list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+              example:
+                data:
+                  - id: 1
+                    name: example
+                    slug: example
+                    description: example
+                    image: example
+                    is_active: false
+                    sort_order: 1
+                    products_count: 1
+      operationId: getCategories
+  /products:
+    get:
+      tags:
+        - محصولات
+      summary: Search and paginate active products
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+            maxLength: 100
+        - name: category
+          in: query
+          schema:
+            type: string
+            maxLength: 100
+          description: نامک دسته؛ محصولات تمام زیردسته‌های فعال هم برمی‌گردند.
+        - name: featured
+          in: query
+          schema:
+            type: string
+            enum:
+              - '0'
+              - '1'
+          description: مقدار 1 فقط محصولات ویژه را برمی‌گرداند؛ 0 فیلتر ویژه بودن را اعمال نمی‌کند.
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 48
+            default: 12
+        - name: sort
+          in: query
+          schema:
+            type: string
+            enum:
+              - newest
+              - price_asc
+              - price_desc
+              - popular
+              - rating
+            default: newest
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: tag
+          in: query
+          schema:
+            type: string
+            maxLength: 80
+          description: فیلتر با یک برچسب دقیق
+      responses:
+        '200':
+          $ref: '#/components/responses/ProductPage'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      operationId: getProducts
+  /products/{slug}:
+    get:
+      tags:
+        - محصولات
+      summary: Get an active product by slug
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Product detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Product'
+              example:
+                data:
+                  id: 1
+                  category_id: 1
+                  name: example
+                  slug: example
+                  sku: example
+                  summary: example
+                  description: example
+                  specifications:
+                    - label: example
+                      value: example
+                  additional_description: example
+                  usage: example
+                  price: 1
+                  old_price: 1
+                  stock: 1
+                  rating: 1
+                  image: example
+                  gallery:
+                    - example
+                  is_featured: false
+                  is_active: false
+                  category:
+                    id: 1
+                    name: example
+                    slug: example
+                    description: example
+                    image: example
+                    is_active: false
+                    sort_order: 1
+                    products_count: 1
+                  views_count: 1
+                  comments:
+                    - id: 1
+                      product_id: 1
+                      user_id: 1
+                      name: example
+                      rating: 1
+                      body: example
+                      is_approved: false
+                      created_at: '2026-11-06T10:00:00Z'
+                      updated_at: '2026-11-06T10:00:00Z'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      operationId: getProductsSlug
+      description: هر مشاهده، views_count را افزایش می‌دهد؛ دسته‌بندی و دیدگاه‌های تأییدشده نیز برمی‌گردند.
+  /products/{slug}/comments:
+    get:
+      tags:
+        - دیدگاه‌ها
+      summary: List approved product comments
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Approved comments
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Comment'
+              example:
+                data:
+                  - id: 1
+                    product_id: 1
+                    user_id: 1
+                    name: example
+                    rating: 1
+                    body: example
+                    is_approved: false
+                    product:
+                      id: 1
+                      category_id: 1
+                      name: example
+                      slug: example
+                      sku: example
+                      summary: example
+                      description: example
+                      specifications:
+                        - label: example
+                          value: example
+                      additional_description: example
+                      usage: example
+                      price: 1
+                      old_price: 1
+                      stock: 1
+                      rating: 1
+                      image: example
+                      gallery:
+                        - example
+                      is_featured: false
+                      is_active: false
+                      category:
+                        id: 1
+                        name: example
+                        slug: example
+                        description: example
+                        image: example
+                        is_active: false
+                        sort_order: 1
+                        products_count: 1
+                      views_count: 1
+                      comments: []
+                    created_at: '2026-11-06T10:00:00Z'
+                    updated_at: '2026-11-06T10:00:00Z'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      operationId: getProductsSlugComments
+    post:
+      tags:
+        - دیدگاه‌ها
+      summary: Submit a product comment for moderation
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - name
+                - rating
+                - body
+              properties:
+                name:
+                  type: string
+                  maxLength: 100
+                rating:
+                  type: integer
+                  minimum: 1
+                  maximum: 5
+                body:
+                  type: string
+                  maxLength: 2000
+            example:
+              name: example
+              rating: 1
+              body: example
+      responses:
+        '201':
+          description: Submitted for moderation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Comment'
+                  message:
+                    type: string
+              example:
+                data:
+                  id: 1
+                  product_id: 1
+                  user_id: 1
+                  name: example
+                  rating: 1
+                  body: example
+                  is_approved: false
+                  product:
+                    id: 1
+                    category_id: 1
+                    name: example
+                    slug: example
+                    sku: example
+                    summary: example
+                    description: example
+                    specifications:
+                      - label: example
+                        value: example
+                    additional_description: example
+                    usage: example
+                    price: 1
+                    old_price: 1
+                    stock: 1
+                    rating: 1
+                    image: example
+                    gallery:
+                      - example
+                    is_featured: false
+                    is_active: false
+                    category:
+                      id: 1
+                      name: example
+                      slug: example
+                      description: example
+                      image: example
+                      is_active: false
+                      sort_order: 1
+                      products_count: 1
+                    views_count: 1
+                    comments: []
+                  created_at: '2026-11-06T10:00:00Z'
+                  updated_at: '2026-11-06T10:00:00Z'
+                message: example
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      operationId: postProductsSlugComments
+  /posts:
+    get:
+      tags:
+        - مقالات
+      summary: List published blog posts
+      responses:
+        '200':
+          description: Paginated posts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostPage'
+              example:
+                current_page: 1
+                last_page: 1
+                per_page: 1
+                total: 1
+                from: 1
+                to: 1
+                path: example
+                first_page_url: example
+                last_page_url: example
+                next_page_url: example
+                prev_page_url: example
+                links:
+                  - url: example
+                    label: example
+                    active: false
+                data:
+                  - id: 1
+                    title: example
+                    slug: example
+                    excerpt: example
+                    body: example
+                    image: example
+                    published_at: '2026-11-06T10:00:00Z'
+                    views_count: 1
+                    created_at: '2026-11-06T10:00:00Z'
+                    updated_at: '2026-11-06T10:00:00Z'
+      operationId: getPosts
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: tag
+          in: query
+          schema:
+            type: string
+            maxLength: 80
+          description: فیلتر با یک برچسب دقیق
+  /posts/{slug}:
+    get:
+      tags:
+        - مقالات
+      summary: Get a published post and count its view
+      parameters:
+        - name: slug
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Blog post
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Post'
+              example:
+                data:
+                  id: 1
+                  title: example
+                  slug: example
+                  excerpt: example
+                  body: example
+                  image: example
+                  published_at: '2026-11-06T10:00:00Z'
+                  views_count: 1
+                  created_at: '2026-11-06T10:00:00Z'
+                  updated_at: '2026-11-06T10:00:00Z'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      operationId: getPostsSlug
+  /cart:
+    get:
+      tags:
+        - سبد خرید
+      summary: Get or create a guest cart
+      parameters:
+        - $ref: '#/components/parameters/CartToken'
+        - name: cart_token
+          in: query
+          description: جایگزین X-Cart-Token؛ در صورت ارسال هر دو، هدر اولویت دارد.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Cart with items and products
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Cart'
+              example:
+                data:
+                  id: 1
+                  token: c2481c00-0175-4d40-b95d-50b89f8cb240
+                  user_id: 1
+                  items:
+                    - id: 1
+                      cart_id: 1
+                      product_id: 1
+                      quantity: 1
+                      product:
+                        id: 1
+                        category_id: 1
+                        name: example
+                        slug: example
+                        sku: example
+                        summary: example
+                        description: example
+                        specifications:
+                          - label: example
+                            value: example
+                        additional_description: example
+                        usage: example
+                        price: 1
+                        old_price: 1
+                        stock: 1
+                        rating: 1
+                        image: example
+                        gallery:
+                          - example
+                        is_featured: false
+                        is_active: false
+                        category:
+                          id: 1
+                          name: example
+                          slug: example
+                          description: example
+                          image: example
+                          is_active: false
+                          sort_order: 1
+                          products_count: 1
+                        views_count: 1
+                        comments:
+                          - id: 1
+                            product_id: 1
+                            user_id: 1
+                            name: example
+                            rating: 1
+                            body: example
+                            is_approved: false
+                            created_at: '2026-11-06T10:00:00Z'
+                            updated_at: '2026-11-06T10:00:00Z'
+      operationId: getCart
+      description: اگر توکن ارسال نشود سبد جدید ساخته می‌شود. data.token را ذخیره کنید و برای تمام عملیات سبد ارسال کنید.
+  /cart/items:
+    post:
+      tags:
+        - سبد خرید
+      summary: Add a product to the cart
+      parameters:
+        - $ref: '#/components/parameters/CartToken'
+        - name: cart_token
+          in: query
+          description: جایگزین X-Cart-Token؛ در صورت ارسال هر دو، هدر اولویت دارد.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - product_id
+                - quantity
+              properties:
+                product_id:
+                  type: integer
+                quantity:
+                  type: integer
+                  minimum: 1
+                  maximum: 20
+                variant_id:
+                  type:
+                    - integer
+                    - 'null'
+                  description: برای محصول متنوع اجباری است؛ موجودی تجمعی همان تنوع بررسی می‌شود.
+            example:
+              product_id: 1
+              quantity: 1
+      responses:
+        '201':
+          description: Item added
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Cart'
+              example:
+                data:
+                  id: 1
+                  token: c2481c00-0175-4d40-b95d-50b89f8cb240
+                  user_id: 1
+                  items:
+                    - id: 1
+                      cart_id: 1
+                      product_id: 1
+                      quantity: 1
+                      product:
+                        id: 1
+                        category_id: 1
+                        name: example
+                        slug: example
+                        sku: example
+                        summary: example
+                        description: example
+                        specifications:
+                          - label: example
+                            value: example
+                        additional_description: example
+                        usage: example
+                        price: 1
+                        old_price: 1
+                        stock: 1
+                        rating: 1
+                        image: example
+                        gallery:
+                          - example
+                        is_featured: false
+                        is_active: false
+                        category:
+                          id: 1
+                          name: example
+                          slug: example
+                          description: example
+                          image: example
+                          is_active: false
+                          sort_order: 1
+                          products_count: 1
+                        views_count: 1
+                        comments:
+                          - id: 1
+                            product_id: 1
+                            user_id: 1
+                            name: example
+                            rating: 1
+                            body: example
+                            is_approved: false
+                            created_at: '2026-11-06T10:00:00Z'
+                            updated_at: '2026-11-06T10:00:00Z'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      operationId: postCartItems
+  /cart/items/{item}:
+    parameters:
+      - $ref: '#/components/parameters/CartToken'
+      - name: item
+        in: path
+        required: true
+        schema:
+          type: integer
+      - name: cart_token
+        in: query
+        description: جایگزین X-Cart-Token؛ در صورت ارسال هر دو، هدر اولویت دارد.
+        schema:
+          type: string
+    patch:
+      tags:
+        - سبد خرید
+      summary: Change cart item quantity
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - quantity
+              properties:
+                quantity:
+                  type: integer
+                  minimum: 1
+                  maximum: 20
+            example:
+              quantity: 1
+      responses:
+        '200':
+          description: Cart updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Cart'
+              example:
+                data:
+                  id: 1
+                  token: c2481c00-0175-4d40-b95d-50b89f8cb240
+                  user_id: 1
+                  items:
+                    - id: 1
+                      cart_id: 1
+                      product_id: 1
+                      quantity: 1
+                      product:
+                        id: 1
+                        category_id: 1
+                        name: example
+                        slug: example
+                        sku: example
+                        summary: example
+                        description: example
+                        specifications:
+                          - label: example
+                            value: example
+                        additional_description: example
+                        usage: example
+                        price: 1
+                        old_price: 1
+                        stock: 1
+                        rating: 1
+                        image: example
+                        gallery:
+                          - example
+                        is_featured: false
+                        is_active: false
+                        category:
+                          id: 1
+                          name: example
+                          slug: example
+                          description: example
+                          image: example
+                          is_active: false
+                          sort_order: 1
+                          products_count: 1
+                        views_count: 1
+                        comments:
+                          - id: 1
+                            product_id: 1
+                            user_id: 1
+                            name: example
+                            rating: 1
+                            body: example
+                            is_approved: false
+                            created_at: '2026-11-06T10:00:00Z'
+                            updated_at: '2026-11-06T10:00:00Z'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      operationId: patchCartItemsItem
+    delete:
+      tags:
+        - سبد خرید
+      summary: Remove an item from the cart
+      responses:
+        '204':
+          description: Item removed
+        '404':
+          $ref: '#/components/responses/NotFound'
+      operationId: deleteCartItemsItem
+  /orders:
+    post:
+      tags:
+        - سفارش‌ها
+      summary: ثبت سفارش مهمان یا کاربر واردشده
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateOrderRequest'
+            example:
+              customer_name: کاربر نمونه
+              phone: '09120000000'
+              address: تهران، آدرس نمونه
+              payment_method: online
+              items:
+                - product_id: 1
+                  quantity: 1
+      responses:
+        '201':
+          description: Order created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Order'
+              example:
+                data:
+                  id: 1
+                  public_id: example
+                  customer_name: example
+                  phone: example
+                  address: example
+                  status: pending
+                  payment_method: online
+                  payment_status: unpaid
+                  subtotal: 1
+                  shipping: 1
+                  total: 1
+                  items:
+                    - id: 1
+                      product_id: 1
+                      product_name: example
+                      quantity: 1
+                      unit_price: 1
+                      total: 1
+                      order_id: 1
+                      product:
+                        id: 1
+                        category_id: 1
+                        name: example
+                        slug: example
+                        sku: example
+                        summary: example
+                        description: example
+                        specifications:
+                          - label: example
+                            value: example
+                        additional_description: example
+                        usage: example
+                        price: 1
+                        old_price: 1
+                        stock: 1
+                        rating: 1
+                        image: example
+                        gallery:
+                          - example
+                        is_featured: false
+                        is_active: false
+                        category:
+                          id: 1
+                          name: example
+                          slug: example
+                          description: example
+                          image: example
+                          is_active: false
+                          sort_order: 1
+                          products_count: 1
+                        views_count: 1
+                        comments:
+                          - id: 1
+                            product_id: 1
+                            user_id: 1
+                            name: example
+                            rating: 1
+                            body: example
+                            is_approved: false
+                            created_at: '2026-11-06T10:00:00Z'
+                            updated_at: '2026-11-06T10:00:00Z'
+                  user_id: 1
+                  user:
+                    id: 1
+                    name: example
+                    email: customer@example.com
+                    is_admin: false
+                    created_at: '2026-11-06T10:00:00Z'
+                  payment_reference: example
+                  paid_at: '2026-11-06T10:00:00Z'
+                  created_at: '2026-11-06T10:00:00Z'
+                  updated_at: '2026-11-06T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      security:
+        - {}
+        - bearerAuth: []
+      description: >-
+        Bearer اختیاری است؛ اگر ارسال شود باید معتبر باشد و سفارش به حساب کاربر متصل می‌شود. قیمت و هزینه
+        ارسال روی سرور محاسبه می‌شود: ارسال از مبلغ ۱۵۰۰۰۰۰ رایگان و پایین‌تر از آن ۷۵۰۰۰ است. موجودی پس از
+        ثبت کاهش می‌یابد. سبد خرید خودکار خالی نمی‌شود.
+      operationId: postOrders
+  /orders/{public_id}:
+    get:
+      tags:
+        - سفارش‌ها
+      summary: دریافت سفارش با شناسه عمومی
+      parameters:
+        - name: public_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Order detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Order'
+              example:
+                data:
+                  id: 1
+                  public_id: example
+                  customer_name: example
+                  phone: example
+                  address: example
+                  status: pending
+                  payment_method: online
+                  payment_status: unpaid
+                  subtotal: 1
+                  shipping: 1
+                  total: 1
+                  items:
+                    - id: 1
+                      product_id: 1
+                      product_name: example
+                      quantity: 1
+                      unit_price: 1
+                      total: 1
+                      order_id: 1
+                      product:
+                        id: 1
+                        category_id: 1
+                        name: example
+                        slug: example
+                        sku: example
+                        summary: example
+                        description: example
+                        specifications:
+                          - label: example
+                            value: example
+                        additional_description: example
+                        usage: example
+                        price: 1
+                        old_price: 1
+                        stock: 1
+                        rating: 1
+                        image: example
+                        gallery:
+                          - example
+                        is_featured: false
+                        is_active: false
+                        category:
+                          id: 1
+                          name: example
+                          slug: example
+                          description: example
+                          image: example
+                          is_active: false
+                          sort_order: 1
+                          products_count: 1
+                        views_count: 1
+                        comments:
+                          - id: 1
+                            product_id: 1
+                            user_id: 1
+                            name: example
+                            rating: 1
+                            body: example
+                            is_approved: false
+                            created_at: '2026-11-06T10:00:00Z'
+                            updated_at: '2026-11-06T10:00:00Z'
+                  user_id: 1
+                  user:
+                    id: 1
+                    name: example
+                    email: customer@example.com
+                    is_admin: false
+                    created_at: '2026-11-06T10:00:00Z'
+                  payment_reference: example
+                  paid_at: '2026-11-06T10:00:00Z'
+                  created_at: '2026-11-06T10:00:00Z'
+                  updated_at: '2026-11-06T10:00:00Z'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      description: >-
+        این مسیر عمومی است و فقط public_id نیاز دارد. مسیر /orders/track علاوه بر کد، شماره تلفن را تطبیق
+        می‌دهد.
+      operationId: getOrdersPublicId
+  /admin/dashboard:
+    get:
+      tags:
+        - مدیریت / داشبورد
+      summary: Get administration dashboard metrics
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Dashboard metrics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Dashboard'
+              example:
+                data:
+                  products: 1
+                  low_stock: 1
+                  orders: 1
+                  revenue: 1
+                  latest_orders:
+                    - id: 1
+                      public_id: example
+                      customer_name: example
+                      phone: example
+                      address: example
+                      status: pending
+                      payment_method: online
+                      payment_status: unpaid
+                      subtotal: 1
+                      shipping: 1
+                      total: 1
+                      items:
+                        - id: 1
+                          product_id: 1
+                          product_name: example
+                          quantity: 1
+                          unit_price: 1
+                          total: 1
+                          order_id: 1
+                          product:
+                            id: 1
+                            category_id: 1
+                            name: example
+                            slug: example
+                            sku: example
+                            summary: example
+                            description: example
+                            specifications:
+                              - label: example
+                                value: example
+                            additional_description: example
+                            usage: example
+                            price: 1
+                            old_price: 1
+                            stock: 1
+                            rating: 1
+                            image: example
+                            gallery:
+                              - example
+                            is_featured: false
+                            is_active: false
+                            category:
+                              id: 1
+                              name: example
+                              slug: example
+                              description: example
+                              image: example
+                              is_active: false
+                              sort_order: 1
+                              products_count: 1
+                            views_count: 1
+                            comments:
+                              - id: 1
+                                product_id: 1
+                                user_id: 1
+                                name: example
+                                rating: 1
+                                body: example
+                                is_approved: false
+                                created_at: '2026-11-06T10:00:00Z'
+                                updated_at: '2026-11-06T10:00:00Z'
+                      user_id: 1
+                      user:
+                        id: 1
+                        name: example
+                        email: customer@example.com
+                        is_admin: false
+                        created_at: '2026-11-06T10:00:00Z'
+                      payment_reference: example
+                      paid_at: '2026-11-06T10:00:00Z'
+                      created_at: '2026-11-06T10:00:00Z'
+                      updated_at: '2026-11-06T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+      operationId: getAdminDashboard
+  /admin/products:
+    get:
+      tags:
+        - مدیریت / محصولات
+      summary: List all products, including inactive products
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AdminPerPage'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+      responses:
+        '200':
+          $ref: '#/components/responses/ProductPage'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+      operationId: getAdminProducts
+    post:
+      tags:
+        - مدیریت / محصولات
+      summary: Create a product
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductCreate'
+            example:
+              category_id: 1
+              name: محصول نمونه
+              slug: sample-product
+              sku: SAMPLE-001
+              price: 250000
+              stock: 20
+              is_active: true
+      responses:
+        '201':
+          description: Product created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Product'
+              example:
+                data:
+                  id: 1
+                  category_id: 1
+                  name: example
+                  slug: example
+                  sku: example
+                  summary: example
+                  description: example
+                  specifications:
+                    - label: example
+                      value: example
+                  additional_description: example
+                  usage: example
+                  price: 1
+                  old_price: 1
+                  stock: 1
+                  rating: 1
+                  image: example
+                  gallery:
+                    - example
+                  is_featured: false
+                  is_active: false
+                  category:
+                    id: 1
+                    name: example
+                    slug: example
+                    description: example
+                    image: example
+                    is_active: false
+                    sort_order: 1
+                    products_count: 1
+                  views_count: 1
+                  comments:
+                    - id: 1
+                      product_id: 1
+                      user_id: 1
+                      name: example
+                      rating: 1
+                      body: example
+                      is_approved: false
+                      created_at: '2026-11-06T10:00:00Z'
+                      updated_at: '2026-11-06T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      operationId: postAdminProducts
+  /admin/products/{product}:
+    parameters:
+      - name: product
+        in: path
+        required: true
+        schema:
+          type: integer
+    put:
+      tags:
+        - مدیریت / محصولات
+      summary: Replace product fields
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductWrite'
+            example:
+              category_id: 1
+              name: example
+              slug: example
+              sku: example
+              summary: example
+              description: example
+              specifications:
+                - label: example
+                  value: example
+              additional_description: example
+              usage: example
+              price: 0
+              old_price: 0
+              stock: 0
+              rating: 0
+              image: example
+              gallery:
+                - example
+              is_featured: false
+              is_active: false
+      responses:
+        '200':
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Product'
+              example:
+                data:
+                  id: 1
+                  category_id: 1
+                  name: example
+                  slug: example
+                  sku: example
+                  summary: example
+                  description: example
+                  specifications:
+                    - label: example
+                      value: example
+                  additional_description: example
+                  usage: example
+                  price: 1
+                  old_price: 1
+                  stock: 1
+                  rating: 1
+                  image: example
+                  gallery:
+                    - example
+                  is_featured: false
+                  is_active: false
+                  category:
+                    id: 1
+                    name: example
+                    slug: example
+                    description: example
+                    image: example
+                    is_active: false
+                    sort_order: 1
+                    products_count: 1
+                  views_count: 1
+                  comments:
+                    - id: 1
+                      product_id: 1
+                      user_id: 1
+                      name: example
+                      rating: 1
+                      body: example
+                      is_approved: false
+                      created_at: '2026-11-06T10:00:00Z'
+                      updated_at: '2026-11-06T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      operationId: putAdminProductsProduct
+      description: >-
+        فقط فیلدهای ارسال‌شده تغییر می‌کنند؛ PUT و PATCH هر دو به‌روزرسانی جزئی را می‌پذیرند. تنوع‌ها دارای id
+        متعلق به همین محصول هستند؛ ترکیب یا SKU تکراری پذیرفته نمی‌شود. موجودی و قیمت پایه از تنوع‌ها محاسبه
+        می‌شود.
+    patch:
+      tags:
+        - مدیریت / محصولات
+      summary: Update product fields
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ProductWrite'
+            example:
+              category_id: 1
+              name: example
+              slug: example
+              sku: example
+              summary: example
+              description: example
+              specifications:
+                - label: example
+                  value: example
+              additional_description: example
+              usage: example
+              price: 0
+              old_price: 0
+              stock: 0
+              rating: 0
+              image: example
+              gallery:
+                - example
+              is_featured: false
+              is_active: false
+      responses:
+        '200':
+          description: Product updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Product'
+              example:
+                data:
+                  id: 1
+                  category_id: 1
+                  name: example
+                  slug: example
+                  sku: example
+                  summary: example
+                  description: example
+                  specifications:
+                    - label: example
+                      value: example
+                  additional_description: example
+                  usage: example
+                  price: 1
+                  old_price: 1
+                  stock: 1
+                  rating: 1
+                  image: example
+                  gallery:
+                    - example
+                  is_featured: false
+                  is_active: false
+                  category:
+                    id: 1
+                    name: example
+                    slug: example
+                    description: example
+                    image: example
+                    is_active: false
+                    sort_order: 1
+                    products_count: 1
+                  views_count: 1
+                  comments:
+                    - id: 1
+                      product_id: 1
+                      user_id: 1
+                      name: example
+                      rating: 1
+                      body: example
+                      is_approved: false
+                      created_at: '2026-11-06T10:00:00Z'
+                      updated_at: '2026-11-06T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      operationId: patchAdminProductsProduct
+      description: >-
+        فقط فیلدهای ارسال‌شده تغییر می‌کنند؛ PUT و PATCH هر دو به‌روزرسانی جزئی را می‌پذیرند. تنوع‌ها دارای id
+        متعلق به همین محصول هستند؛ ترکیب یا SKU تکراری پذیرفته نمی‌شود. موجودی و قیمت پایه از تنوع‌ها محاسبه
+        می‌شود.
+    delete:
+      tags:
+        - مدیریت / محصولات
+      summary: Delete a product
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Product deleted
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      operationId: deleteAdminProductsProduct
+  /admin/categories:
+    get:
+      tags:
+        - مدیریت / دسته‌بندی‌ها
+      summary: List all categories
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Category list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+              example:
+                data:
+                  - id: 1
+                    name: example
+                    slug: example
+                    description: example
+                    image: example
+                    is_active: false
+                    sort_order: 1
+                    products_count: 1
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+      operationId: getAdminCategories
+    post:
+      tags:
+        - مدیریت / دسته‌بندی‌ها
+      summary: Create a category
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryCreate'
+            example:
+              name: مکمل‌ها
+              slug: supplements
+              is_active: true
+      responses:
+        '201':
+          description: Category created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Category'
+              example:
+                data:
+                  id: 1
+                  name: example
+                  slug: example
+                  description: example
+                  image: example
+                  is_active: false
+                  sort_order: 1
+                  products_count: 1
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      operationId: postAdminCategories
+  /admin/categories/{category}:
+    parameters:
+      - name: category
+        in: path
+        required: true
+        schema:
+          type: integer
+    put:
+      tags:
+        - مدیریت / دسته‌بندی‌ها
+      summary: Replace category fields
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryWrite'
+            example:
+              name: example
+              slug: example
+              description: example
+              image: example
+              is_active: false
+              sort_order: 0
+      responses:
+        '200':
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+              example:
+                data:
+                  - id: 1
+                    name: example
+                    slug: example
+                    description: example
+                    image: example
+                    is_active: false
+                    sort_order: 1
+                    products_count: 1
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      operationId: putAdminCategoriesCategory
+      description: فقط فیلدهای ارسال‌شده تغییر می‌کنند؛ PUT و PATCH هر دو به‌روزرسانی جزئی را می‌پذیرند.
+    patch:
+      tags:
+        - مدیریت / دسته‌بندی‌ها
+      summary: Update category fields
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryWrite'
+            example:
+              name: example
+              slug: example
+              description: example
+              image: example
+              is_active: false
+              sort_order: 0
+      responses:
+        '200':
+          description: Category updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Category'
+              example:
+                data:
+                  - id: 1
+                    name: example
+                    slug: example
+                    description: example
+                    image: example
+                    is_active: false
+                    sort_order: 1
+                    products_count: 1
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      operationId: patchAdminCategoriesCategory
+      description: فقط فیلدهای ارسال‌شده تغییر می‌کنند؛ PUT و PATCH هر دو به‌روزرسانی جزئی را می‌پذیرند.
+    delete:
+      tags:
+        - مدیریت / دسته‌بندی‌ها
+      summary: Delete an empty category
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Category deleted
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+      operationId: deleteAdminCategoriesCategory
+  /admin/orders:
+    get:
+      tags:
+        - مدیریت / سفارش‌ها
+      summary: List all orders
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AdminPerPage'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+      responses:
+        '200':
+          $ref: '#/components/responses/OrderPage'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+      operationId: getAdminOrders
+  /admin/orders/{order}:
+    parameters:
+      - name: order
+        in: path
+        required: true
+        schema:
+          type: integer
+    get:
+      tags:
+        - مدیریت / سفارش‌ها
+      summary: Get an order by internal ID
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Order detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Order'
+              example:
+                data:
+                  id: 1
+                  public_id: example
+                  customer_name: example
+                  phone: example
+                  address: example
+                  status: pending
+                  payment_method: online
+                  payment_status: unpaid
+                  subtotal: 1
+                  shipping: 1
+                  total: 1
+                  items:
+                    - id: 1
+                      product_id: 1
+                      product_name: example
+                      quantity: 1
+                      unit_price: 1
+                      total: 1
+                      order_id: 1
+                      product:
+                        id: 1
+                        category_id: 1
+                        name: example
+                        slug: example
+                        sku: example
+                        summary: example
+                        description: example
+                        specifications:
+                          - label: example
+                            value: example
+                        additional_description: example
+                        usage: example
+                        price: 1
+                        old_price: 1
+                        stock: 1
+                        rating: 1
+                        image: example
+                        gallery:
+                          - example
+                        is_featured: false
+                        is_active: false
+                        category:
+                          id: 1
+                          name: example
+                          slug: example
+                          description: example
+                          image: example
+                          is_active: false
+                          sort_order: 1
+                          products_count: 1
+                        views_count: 1
+                        comments:
+                          - id: 1
+                            product_id: 1
+                            user_id: 1
+                            name: example
+                            rating: 1
+                            body: example
+                            is_approved: false
+                            created_at: '2026-11-06T10:00:00Z'
+                            updated_at: '2026-11-06T10:00:00Z'
+                  user_id: 1
+                  user:
+                    id: 1
+                    name: example
+                    email: customer@example.com
+                    is_admin: false
+                    created_at: '2026-11-06T10:00:00Z'
+                  payment_reference: example
+                  paid_at: '2026-11-06T10:00:00Z'
+                  created_at: '2026-11-06T10:00:00Z'
+                  updated_at: '2026-11-06T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      operationId: getAdminOrdersOrder
+    patch:
+      tags:
+        - مدیریت / سفارش‌ها
+      summary: Update order status
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  $ref: '#/components/schemas/OrderStatus'
+            example:
+              status: pending
+      responses:
+        '200':
+          description: Order updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Order'
+              example:
+                data:
+                  id: 1
+                  public_id: example
+                  customer_name: example
+                  phone: example
+                  address: example
+                  status: pending
+                  payment_method: online
+                  payment_status: unpaid
+                  subtotal: 1
+                  shipping: 1
+                  total: 1
+                  items:
+                    - id: 1
+                      product_id: 1
+                      product_name: example
+                      quantity: 1
+                      unit_price: 1
+                      total: 1
+                      order_id: 1
+                      product:
+                        id: 1
+                        category_id: 1
+                        name: example
+                        slug: example
+                        sku: example
+                        summary: example
+                        description: example
+                        specifications:
+                          - label: example
+                            value: example
+                        additional_description: example
+                        usage: example
+                        price: 1
+                        old_price: 1
+                        stock: 1
+                        rating: 1
+                        image: example
+                        gallery:
+                          - example
+                        is_featured: false
+                        is_active: false
+                        category:
+                          id: 1
+                          name: example
+                          slug: example
+                          description: example
+                          image: example
+                          is_active: false
+                          sort_order: 1
+                          products_count: 1
+                        views_count: 1
+                        comments:
+                          - id: 1
+                            product_id: 1
+                            user_id: 1
+                            name: example
+                            rating: 1
+                            body: example
+                            is_approved: false
+                            created_at: '2026-11-06T10:00:00Z'
+                            updated_at: '2026-11-06T10:00:00Z'
+                  user_id: 1
+                  user:
+                    id: 1
+                    name: example
+                    email: customer@example.com
+                    is_admin: false
+                    created_at: '2026-11-06T10:00:00Z'
+                  payment_reference: example
+                  paid_at: '2026-11-06T10:00:00Z'
+                  created_at: '2026-11-06T10:00:00Z'
+                  updated_at: '2026-11-06T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      operationId: patchAdminOrdersOrder
+  /admin/users:
+    get:
+      tags:
+        - مدیریت / کاربران
+      summary: List users
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AdminPerPage'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+      responses:
+        '200':
+          description: Paginated users
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserPage'
+              example:
+                current_page: 1
+                last_page: 1
+                per_page: 1
+                total: 1
+                from: 1
+                to: 1
+                path: example
+                first_page_url: example
+                last_page_url: example
+                next_page_url: example
+                prev_page_url: example
+                links:
+                  - url: example
+                    label: example
+                    active: false
+                data:
+                  - id: 1
+                    name: example
+                    email: customer@example.com
+                    is_admin: false
+                    created_at: '2026-11-06T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+      operationId: getAdminUsers
+  /admin/users/{user}:
+    patch:
+      tags:
+        - مدیریت / کاربران
+      summary: Grant or revoke administrator access
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: user
+          in: path
+          required: true
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - is_admin
+              properties:
+                is_admin:
+                  type: boolean
+            example:
+              is_admin: false
+      responses:
+        '200':
+          description: User role updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/User'
+              example:
+                data:
+                  id: 1
+                  name: example
+                  email: customer@example.com
+                  is_admin: false
+                  created_at: '2026-11-06T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      operationId: patchAdminUsersUser
+      description: مدیر نمی‌تواند دسترسی مدیریتی خودش را حذف کند؛ در این حالت 422 با message برمی‌گردد.
+  /admin/posts:
+    get:
+      tags:
+        - مدیریت / مقالات
+      summary: List all blog posts including drafts
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 20
+          description: عدد مثبت؛ در کنترلر فعلی سقف ۱۰۰ اعمال نشده است.
+      responses:
+        '200':
+          description: Paginated posts
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PostPage'
+              example:
+                current_page: 1
+                last_page: 1
+                per_page: 1
+                total: 1
+                from: 1
+                to: 1
+                path: example
+                first_page_url: example
+                last_page_url: example
+                next_page_url: example
+                prev_page_url: example
+                links:
+                  - url: example
+                    label: example
+                    active: false
+                data:
+                  - id: 1
+                    title: example
+                    slug: example
+                    excerpt: example
+                    body: example
+                    image: example
+                    published_at: '2026-11-06T10:00:00Z'
+                    views_count: 1
+                    created_at: '2026-11-06T10:00:00Z'
+                    updated_at: '2026-11-06T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+      operationId: getAdminPosts
+    post:
+      tags:
+        - مدیریت / مقالات
+      summary: Create a blog post
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostWrite'
+            example:
+              title: مقاله نمونه
+              slug: sample-post
+              excerpt: خلاصه مقاله
+              body: متن مقاله
+              published_at: null
+      responses:
+        '201':
+          description: Post created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Post'
+              example:
+                data:
+                  id: 1
+                  title: example
+                  slug: example
+                  excerpt: example
+                  body: example
+                  image: example
+                  published_at: '2026-11-06T10:00:00Z'
+                  views_count: 1
+                  created_at: '2026-11-06T10:00:00Z'
+                  updated_at: '2026-11-06T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      operationId: postAdminPosts
+  /admin/posts/{post}:
+    parameters:
+      - name: post
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags:
+        - مدیریت / مقالات
+      summary: Update a blog post
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostWrite'
+            example:
+              title: مقاله نمونه
+              slug: sample-post
+              excerpt: خلاصه مقاله
+              body: متن مقاله
+              published_at: null
+      responses:
+        '200':
+          description: Post updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Post'
+              example:
+                data:
+                  id: 1
+                  title: example
+                  slug: example
+                  excerpt: example
+                  body: example
+                  image: example
+                  published_at: '2026-11-06T10:00:00Z'
+                  views_count: 1
+                  created_at: '2026-11-06T10:00:00Z'
+                  updated_at: '2026-11-06T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      operationId: patchAdminPostsPost
+    delete:
+      tags:
+        - مدیریت / مقالات
+      summary: Delete a blog post
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Post deleted
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      operationId: deleteAdminPostsPost
+    put:
+      tags:
+        - مدیریت / مقالات
+      summary: Update a blog post
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PostWrite'
+            example:
+              title: مقاله نمونه
+              slug: sample-post
+              excerpt: خلاصه مقاله
+              body: متن مقاله
+              published_at: null
+      responses:
+        '200':
+          description: Post updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Post'
+              example:
+                data:
+                  id: 1
+                  title: example
+                  slug: example
+                  excerpt: example
+                  body: example
+                  image: example
+                  published_at: '2026-11-06T10:00:00Z'
+                  views_count: 1
+                  created_at: '2026-11-06T10:00:00Z'
+                  updated_at: '2026-11-06T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      operationId: putAdminPostsPost
+  /admin/comments:
+    get:
+      tags:
+        - مدیریت / دیدگاه‌ها
+      summary: List product comments awaiting moderation or published
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: per_page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 20
+          description: عدد مثبت؛ در کنترلر فعلی سقف ۱۰۰ اعمال نشده است.
+      responses:
+        '200':
+          description: Paginated product comments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CommentPage'
+              example:
+                current_page: 1
+                last_page: 1
+                per_page: 1
+                total: 1
+                from: 1
+                to: 1
+                path: example
+                first_page_url: example
+                last_page_url: example
+                next_page_url: example
+                prev_page_url: example
+                links:
+                  - url: example
+                    label: example
+                    active: false
+                data:
+                  - id: 1
+                    product_id: 1
+                    user_id: 1
+                    name: example
+                    rating: 1
+                    body: example
+                    is_approved: false
+                    product:
+                      id: 1
+                      category_id: 1
+                      name: example
+                      slug: example
+                      sku: example
+                      summary: example
+                      description: example
+                      specifications:
+                        - label: example
+                          value: example
+                      additional_description: example
+                      usage: example
+                      price: 1
+                      old_price: 1
+                      stock: 1
+                      rating: 1
+                      image: example
+                      gallery:
+                        - example
+                      is_featured: false
+                      is_active: false
+                      category:
+                        id: 1
+                        name: example
+                        slug: example
+                        description: example
+                        image: example
+                        is_active: false
+                        sort_order: 1
+                        products_count: 1
+                      views_count: 1
+                      comments: []
+                    created_at: '2026-11-06T10:00:00Z'
+                    updated_at: '2026-11-06T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+      operationId: getAdminComments
+  /admin/comments/{comment}:
+    parameters:
+      - name: comment
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      tags:
+        - مدیریت / دیدگاه‌ها
+      summary: Approve or unpublish a product comment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - is_approved
+              properties:
+                is_approved:
+                  type: boolean
+            example:
+              is_approved: false
+      responses:
+        '200':
+          description: Comment moderation updated
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Comment'
+              example:
+                data:
+                  id: 1
+                  product_id: 1
+                  user_id: 1
+                  name: example
+                  rating: 1
+                  body: example
+                  is_approved: false
+                  product:
+                    id: 1
+                    category_id: 1
+                    name: example
+                    slug: example
+                    sku: example
+                    summary: example
+                    description: example
+                    specifications:
+                      - label: example
+                        value: example
+                    additional_description: example
+                    usage: example
+                    price: 1
+                    old_price: 1
+                    stock: 1
+                    rating: 1
+                    image: example
+                    gallery:
+                      - example
+                    is_featured: false
+                    is_active: false
+                    category:
+                      id: 1
+                      name: example
+                      slug: example
+                      description: example
+                      image: example
+                      is_active: false
+                      sort_order: 1
+                      products_count: 1
+                    views_count: 1
+                    comments: []
+                  created_at: '2026-11-06T10:00:00Z'
+                  updated_at: '2026-11-06T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      operationId: patchAdminCommentsComment
+    delete:
+      tags:
+        - مدیریت / دیدگاه‌ها
+      summary: Delete a product comment
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Comment deleted
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+      operationId: deleteAdminCommentsComment
+  /orders/mine:
+    get:
+      summary: فهرست سفارش‌های کاربر جاری
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AdminPerPage'
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OrderPage'
+              example:
+                current_page: 1
+                last_page: 1
+                per_page: 1
+                total: 1
+                from: 1
+                to: 1
+                path: example
+                first_page_url: example
+                last_page_url: example
+                next_page_url: example
+                prev_page_url: example
+                links:
+                  - url: example
+                    label: example
+                    active: false
+                data:
+                  - id: 1
+                    public_id: example
+                    customer_name: example
+                    phone: example
+                    address: example
+                    status: pending
+                    payment_method: online
+                    payment_status: unpaid
+                    subtotal: 1
+                    shipping: 1
+                    total: 1
+                    items:
+                      - id: 1
+                        product_id: 1
+                        product_name: example
+                        quantity: 1
+                        unit_price: 1
+                        total: 1
+                        order_id: 1
+                        product:
+                          id: 1
+                          category_id: 1
+                          name: example
+                          slug: example
+                          sku: example
+                          summary: example
+                          description: example
+                          specifications:
+                            - label: example
+                              value: example
+                          additional_description: example
+                          usage: example
+                          price: 1
+                          old_price: 1
+                          stock: 1
+                          rating: 1
+                          image: example
+                          gallery:
+                            - example
+                          is_featured: false
+                          is_active: false
+                          category:
+                            id: 1
+                            name: example
+                            slug: example
+                            description: example
+                            image: example
+                            is_active: false
+                            sort_order: 1
+                            products_count: 1
+                          views_count: 1
+                          comments:
+                            - id: 1
+                              product_id: 1
+                              user_id: 1
+                              name: example
+                              rating: 1
+                              body: example
+                              is_approved: false
+                              created_at: '2026-11-06T10:00:00Z'
+                              updated_at: '2026-11-06T10:00:00Z'
+                    user_id: 1
+                    user:
+                      id: 1
+                      name: example
+                      email: customer@example.com
+                      is_admin: false
+                      created_at: '2026-11-06T10:00:00Z'
+                    payment_reference: example
+                    paid_at: '2026-11-06T10:00:00Z'
+                    created_at: '2026-11-06T10:00:00Z'
+                    updated_at: '2026-11-06T10:00:00Z'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+      tags:
+        - سفارش‌ها
+      operationId: getOrdersMine
+  /orders/track:
+    post:
+      summary: پیگیری سفارش با کد عمومی و شماره تلفن
+      description: >-
+        حداکثر ۲۰ درخواست در دقیقه برای هر کلید محدودسازی (IP در مسیر مهمان). هر دو مقدار باید با سفارش مطابقت
+        داشته باشند.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                public_id:
+                  type: string
+                  minLength: 26
+                  maxLength: 26
+                phone:
+                  type: string
+                  maxLength: 20
+              required:
+                - public_id
+                - phone
+            example:
+              public_id: example
+              phone: example
+      responses:
+        '200':
+          description: Order detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Order'
+              example:
+                data:
+                  id: 1
+                  public_id: example
+                  customer_name: example
+                  phone: example
+                  address: example
+                  status: pending
+                  payment_method: online
+                  payment_status: unpaid
+                  subtotal: 1
+                  shipping: 1
+                  total: 1
+                  items:
+                    - id: 1
+                      product_id: 1
+                      product_name: example
+                      quantity: 1
+                      unit_price: 1
+                      total: 1
+                      order_id: 1
+                      product:
+                        id: 1
+                        category_id: 1
+                        name: example
+                        slug: example
+                        sku: example
+                        summary: example
+                        description: example
+                        specifications:
+                          - label: example
+                            value: example
+                        additional_description: example
+                        usage: example
+                        price: 1
+                        old_price: 1
+                        stock: 1
+                        rating: 1
+                        image: example
+                        gallery:
+                          - example
+                        is_featured: false
+                        is_active: false
+                        category:
+                          id: 1
+                          name: example
+                          slug: example
+                          description: example
+                          image: example
+                          is_active: false
+                          sort_order: 1
+                          products_count: 1
+                        views_count: 1
+                        comments:
+                          - id: 1
+                            product_id: 1
+                            user_id: 1
+                            name: example
+                            rating: 1
+                            body: example
+                            is_approved: false
+                            created_at: '2026-11-06T10:00:00Z'
+                            updated_at: '2026-11-06T10:00:00Z'
+                  user_id: 1
+                  user:
+                    id: 1
+                    name: example
+                    email: customer@example.com
+                    is_admin: false
+                    created_at: '2026-11-06T10:00:00Z'
+                  payment_reference: example
+                  paid_at: '2026-11-06T10:00:00Z'
+                  created_at: '2026-11-06T10:00:00Z'
+                  updated_at: '2026-11-06T10:00:00Z'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+      tags:
+        - سفارش‌ها
+      operationId: postOrdersTrack
+  /orders/{public_id}/payments/test:
+    parameters:
+      - name: public_id
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      summary: آغاز پرداخت آزمایشی سفارش
+      description: >-
+        فقط در develop، development، local و testing قابل استفاده است. در production پاسخ 404 می‌دهد. فقط
+        سفارش آنلاین پرداخت‌نشده پذیرفته می‌شود. توکن پاسخ را برای verify نگه دارید؛ شروع مجدد، توکن قبلی را
+        جایگزین می‌کند.
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/PaymentSession'
+              example:
+                data:
+                  order_id: example
+                  amount: 1
+                  reference: example
+                  payment_token: example
+                  mode: test
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      tags:
+        - پرداخت
+      operationId: postOrdersPublicIdPaymentsTest
+  /orders/{public_id}/payments/test/verify:
+    parameters:
+      - name: public_id
+        in: path
+        required: true
+        schema:
+          type: string
+    post:
+      summary: تأیید یا شکست پرداخت آزمایشی
+      description: >-
+        فقط در develop، development، local و testing قابل استفاده است. در production پاسخ 404 می‌دهد. توکن
+        یک‌بارمصرف است. success وضعیت سفارش و پرداخت را paid می‌کند؛ failed وضعیت سفارش را pending و پرداخت را
+        failed می‌کند.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                payment_token:
+                  type: string
+                outcome:
+                  type: string
+                  enum:
+                    - success
+                    - failed
+              required:
+                - payment_token
+                - outcome
+            example:
+              payment_token: example
+              outcome: success
+      responses:
+        '200':
+          description: Order detail
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/Order'
+              example:
+                data:
+                  id: 1
+                  public_id: example
+                  customer_name: example
+                  phone: example
+                  address: example
+                  status: pending
+                  payment_method: online
+                  payment_status: unpaid
+                  subtotal: 1
+                  shipping: 1
+                  total: 1
+                  items:
+                    - id: 1
+                      product_id: 1
+                      product_name: example
+                      quantity: 1
+                      unit_price: 1
+                      total: 1
+                      order_id: 1
+                      product:
+                        id: 1
+                        category_id: 1
+                        name: example
+                        slug: example
+                        sku: example
+                        summary: example
+                        description: example
+                        specifications:
+                          - label: example
+                            value: example
+                        additional_description: example
+                        usage: example
+                        price: 1
+                        old_price: 1
+                        stock: 1
+                        rating: 1
+                        image: example
+                        gallery:
+                          - example
+                        is_featured: false
+                        is_active: false
+                        category:
+                          id: 1
+                          name: example
+                          slug: example
+                          description: example
+                          image: example
+                          is_active: false
+                          sort_order: 1
+                          products_count: 1
+                        views_count: 1
+                        comments:
+                          - id: 1
+                            product_id: 1
+                            user_id: 1
+                            name: example
+                            rating: 1
+                            body: example
+                            is_approved: false
+                            created_at: '2026-11-06T10:00:00Z'
+                            updated_at: '2026-11-06T10:00:00Z'
+                  user_id: 1
+                  user:
+                    id: 1
+                    name: example
+                    email: customer@example.com
+                    is_admin: false
+                    created_at: '2026-11-06T10:00:00Z'
+                  payment_reference: example
+                  paid_at: '2026-11-06T10:00:00Z'
+                  created_at: '2026-11-06T10:00:00Z'
+                  updated_at: '2026-11-06T10:00:00Z'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      tags:
+        - پرداخت
+      operationId: postOrdersPublicIdPaymentsTestVerify
+  /orders/{public_id}/payments:
+    parameters:
+      - name: public_id
+        in: path
+        required: true
+        schema:
+          type: string
+        description: شناسه عمومی سفارش آنلاین پرداخت‌نشده
+    post:
+      tags:
+        - پرداخت
+      operationId: postOrdersPublicIdPayments
+      summary: آغاز پرداخت متناسب با محیط برنامه
+      description: >-
+        در APP_ENV=develop نشست محلی آزمایشی و در production نشست واقعی زرین‌پال ساخته می‌شود. مرورگر را به
+        data.payment_url هدایت کنید. مبالغ فروشگاه تومان و درخواست زرین‌پال ریال است. نشست در انتظار دوباره
+        استفاده می‌شود. کلید پذیرنده به کلاینت فرستاده نمی‌شود.
+      responses:
+        '200':
+          description: نشست پرداخت
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    required:
+                      - order_id
+                      - amount
+                      - mode
+                      - payment_url
+                    properties:
+                      order_id:
+                        type: string
+                      amount:
+                        type: integer
+                        description: مبلغ سفارش به تومان
+                      mode:
+                        type: string
+                        enum:
+                          - test
+                          - production
+                      payment_url:
+                        type: string
+                        format: uri
+                      reference:
+                        type: string
+                      payment_token:
+                        type: string
+                        description: فقط در توسعه
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /payments/zarinpal/callback:
+    get:
+      tags:
+        - پرداخت
+      operationId: getPaymentsZarinpalCallback
+      summary: بازگشت زرین‌پال و تأیید سمت سرور
+      description: >-
+        فقط production. وضعیت OK به‌تنهایی پرداخت را موفق نمی‌کند؛ authority و مبلغ ذخیره‌شده با سرویس
+        زرین‌پال تأیید می‌شوند. تأیید تکراری اثر تکراری ندارد. در لغو، نشست برای بررسی حفظ می‌شود. این مسیر
+        توسط مرورگر پس از درگاه فراخوانی می‌شود.
+      parameters:
+        - name: Authority
+          in: query
+          required: true
+          schema:
+            type: string
+            maxLength: 100
+        - name: Status
+          in: query
+          required: true
+          schema:
+            type: string
+            enum:
+              - OK
+              - NOK
+      responses:
+        '302':
+          description: انتقال به SITE_URL/payment/result?order={public_id}؛ نتیجه نهایی از سفارش خوانده می‌شود.
+          headers:
+            Location:
+              schema:
+                type: string
+                format: uri
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+        '502':
+          $ref: '#/components/responses/BadGateway'
+        '503':
+          $ref: '#/components/responses/ServiceUnavailable'
+  /site-badges:
+    get:
+      operationId: getSiteBadges
+      summary: فهرست نمادهای فعال به ترتیب نمایش
+      tags:
+        - نمادها و گواهی‌ها
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SiteBadge'
+  /admin/site-badges:
+    get:
+      operationId: getAdminSiteBadges
+      summary: فهرست همه نمادها
+      tags:
+        - مدیریت / نمادها و گواهی‌ها
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/SiteBadge'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      operationId: postAdminSiteBadges
+      summary: ایجاد نماد یا گواهی
+      tags:
+        - مدیریت / نمادها و گواهی‌ها
+      security:
+        - bearerAuth: []
+      responses:
+        '201':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SiteBadge'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SiteBadgeWrite'
+            example:
+              title: ISO 9001
+              image_url: https://example.com/iso.png
+              link_url: https://example.com/certificate
+              is_active: true
+              sort_order: 0
+      description: آدرس تصویر و لینک فقط HTTP یا HTTPS می‌پذیرند. کد HTML یا script ذخیره نمی‌شود.
+  /admin/site-badges/{badge}:
+    parameters:
+      - name: badge
+        in: path
+        required: true
+        schema:
+          type: integer
+    patch:
+      operationId: patchAdminSiteBadgesBadge
+      summary: ویرایش نماد یا گواهی
+      tags:
+        - مدیریت / نمادها و گواهی‌ها
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: '#/components/schemas/SiteBadge'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/ValidationError'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SiteBadgeWrite'
+            example:
+              title: ISO 9001
+              image_url: https://example.com/iso.png
+              link_url: https://example.com/certificate
+              is_active: true
+              sort_order: 0
+      description: آدرس تصویر و لینک فقط HTTP یا HTTPS می‌پذیرند. کد HTML یا script ذخیره نمی‌شود.
+    delete:
+      operationId: deleteAdminSiteBadgesBadge
+      summary: حذف نماد یا گواهی
+      tags:
+        - مدیریت / نمادها و گواهی‌ها
+      security:
+        - bearerAuth: []
+      responses:
+        '204':
+          description: Deleted
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /admin/marketplaces:
+    get:
+      tags:
+        - مدیریت / پلتفرم‌ها
+      operationId: getAdminMarketplaces
+      summary: وضعیت اتصال‌ها و مدل هزینه تنظیم‌شده در env
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  auto_sync:
+                    type: boolean
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MarketplaceChannel'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+  /admin/products/{product}/sync:
+    parameters:
+      - name: product
+        in: path
+        required: true
+        schema:
+          type: integer
+    post:
+      tags:
+        - مدیریت / پلتفرم‌ها
+      operationId: postAdminProductSync
+      summary: درخواست همگام‌سازی برای کانال‌های فعال
+      description: >-
+        202 فقط پذیرش درخواست است؛ وضعیت submitted نیز تأیید انتشار نهایی پلتفرم نیست. در develop فراخوانی
+        واقعی انجام نمی‌شود. صف marketplaces باید فعال باشد.
+      security:
+        - bearerAuth: []
+      responses:
+        '202':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  data:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/MarketplaceListing'
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+  /marketplaces/torob/products:
+    post:
+      tags:
+        - اتصال پلتفرم‌ها
+      operationId: postTorobProductFeed
+      summary: خروجی Product API v3 برای دریافت خودکار ترب
+      description: >-
+        فقط با TOROB_ENABLED=true. این endpoint توسط ترب خوانده می‌شود و ثبت مستقیم محصول یا تضمین نمایش در
+        ترب نیست. اندازه صفحه ۱۰۰ است؛ ورودی بدون پارامترهای لازم 400 می‌دهد.
+      security:
+        - torobToken: []
+      parameters:
+        - name: X-Torob-Token-Version
+          in: header
+          required: true
+          schema:
+            type: string
+            enum:
+              - '1'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                page:
+                  type: integer
+                  minimum: 1
+                sort:
+                  type: string
+                  enum:
+                    - date_added_desc
+                    - date_updated_desc
+                    - product_id_desc
+                cursor:
+                  type: string
+                page_uniques:
+                  type: array
+                  items:
+                    type: string
+                page_urls:
+                  type: array
+                  items:
+                    type: string
+            example:
+              page: 1
+              sort: date_added_desc
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  api_version:
+                    type: string
+                    const: torob_api_v3
+                  current_page:
+                    type:
+                      - integer
+                      - 'null'
+                  total:
+                    type: integer
+                  max_pages:
+                    type: integer
+                  next_cursor:
+                    type:
+                      - string
+                      - 'null'
+                  products:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        page_unique:
+                          type: string
+                        page_url:
+                          type: string
+                        product_group_id:
+                          type: string
+                        title:
+                          type: string
+                        current_price:
+                          type: integer
+                        old_price:
+                          type: integer
+                        availability:
+                          type: boolean
+                        category_name:
+                          type:
+                            - string
+                            - 'null'
+                        image_links:
+                          type: array
+                          items:
+                            type: string
+                        spec:
+                          type: object
+                          additionalProperties: true
+                        short_desc:
+                          type: string
+                        date_added:
+                          type: string
+                          format: date-time
+                        date_updated:
+                          type: string
+                          format: date-time
+        '400':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        '401':
+          $ref: '#/components/responses/Unauthenticated'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: opaque-token
+    torobToken:
+      type: apiKey
+      in: header
+      name: X-Torob-Token
+      description: JWT امضاشده EdDSA توسط ترب؛ exp، nbf و aud بررسی می‌شوند.
+  parameters:
+    AdminPerPage:
+      name: per_page
+      in: query
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 100
+        default: 20
+    CartToken:
+      name: X-Cart-Token
+      in: header
+      required: false
+      schema:
+        type: string
+        format: uuid
+      description: Persist the token returned in data.token for guest carts
+  responses:
+    AuthSuccess:
+      description: Authentication succeeded
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              data:
+                $ref: '#/components/schemas/AuthPayload'
+          example:
+            data:
+              user:
+                id: 1
+                name: example
+                email: customer@example.com
+                is_admin: false
+                created_at: '2026-11-06T10:00:00Z'
+              token: example
+              expires_at: '2026-11-06T10:00:00Z'
+    ProductPage:
+      description: Paginated products
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProductPage'
+          example:
+            current_page: 1
+            last_page: 1
+            per_page: 1
+            total: 1
+            from: 1
+            to: 1
+            path: example
+            first_page_url: example
+            last_page_url: example
+            next_page_url: example
+            prev_page_url: example
+            links:
+              - url: example
+                label: example
+                active: false
+            data:
+              - id: 1
+                category_id: 1
+                name: example
+                slug: example
+                sku: example
+                summary: example
+                description: example
+                specifications:
+                  - label: example
+                    value: example
+                additional_description: example
+                usage: example
+                price: 1
+                old_price: 1
+                stock: 1
+                rating: 1
+                image: example
+                gallery:
+                  - example
+                is_featured: false
+                is_active: false
+                category:
+                  id: 1
+                  name: example
+                  slug: example
+                  description: example
+                  image: example
+                  is_active: false
+                  sort_order: 1
+                  products_count: 1
+                views_count: 1
+                comments:
+                  - id: 1
+                    product_id: 1
+                    user_id: 1
+                    name: example
+                    rating: 1
+                    body: example
+                    is_approved: false
+                    created_at: '2026-11-06T10:00:00Z'
+                    updated_at: '2026-11-06T10:00:00Z'
+    OrderPage:
+      description: Paginated orders
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/OrderPage'
+          example:
+            current_page: 1
+            last_page: 1
+            per_page: 1
+            total: 1
+            from: 1
+            to: 1
+            path: example
+            first_page_url: example
+            last_page_url: example
+            next_page_url: example
+            prev_page_url: example
+            links:
+              - url: example
+                label: example
+                active: false
+            data:
+              - id: 1
+                public_id: example
+                customer_name: example
+                phone: example
+                address: example
+                status: pending
+                payment_method: online
+                payment_status: unpaid
+                subtotal: 1
+                shipping: 1
+                total: 1
+                items:
+                  - id: 1
+                    product_id: 1
+                    product_name: example
+                    quantity: 1
+                    unit_price: 1
+                    total: 1
+                    order_id: 1
+                    product:
+                      id: 1
+                      category_id: 1
+                      name: example
+                      slug: example
+                      sku: example
+                      summary: example
+                      description: example
+                      specifications:
+                        - label: example
+                          value: example
+                      additional_description: example
+                      usage: example
+                      price: 1
+                      old_price: 1
+                      stock: 1
+                      rating: 1
+                      image: example
+                      gallery:
+                        - example
+                      is_featured: false
+                      is_active: false
+                      category:
+                        id: 1
+                        name: example
+                        slug: example
+                        description: example
+                        image: example
+                        is_active: false
+                        sort_order: 1
+                        products_count: 1
+                      views_count: 1
+                      comments:
+                        - id: 1
+                          product_id: 1
+                          user_id: 1
+                          name: example
+                          rating: 1
+                          body: example
+                          is_approved: false
+                          created_at: '2026-11-06T10:00:00Z'
+                          updated_at: '2026-11-06T10:00:00Z'
+                user_id: 1
+                user:
+                  id: 1
+                  name: example
+                  email: customer@example.com
+                  is_admin: false
+                  created_at: '2026-11-06T10:00:00Z'
+                payment_reference: example
+                paid_at: '2026-11-06T10:00:00Z'
+                created_at: '2026-11-06T10:00:00Z'
+                updated_at: '2026-11-06T10:00:00Z'
+    ValidationError:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationError'
+          example:
+            message: The given data was invalid.
+            errors:
+              field:
+                - This field is required.
+    Unauthenticated:
+      description: Unauthenticated.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Message'
+          example:
+            message: Unauthenticated.
+    Forbidden:
+      description: Forbidden.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Message'
+          example:
+            message: Forbidden.
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Message'
+          example:
+            message: Resource not found
+    Conflict:
+      description: Resource conflict
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Message'
+          example:
+            message: Resource conflict
+    TooManyRequests:
+      description: Too Many Attempts.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Message'
+          example:
+            message: Too Many Attempts.
+    ServiceUnavailable:
+      description: تنظیمات سرویس کامل نیست یا ارتباط برقرار نشد.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Message'
+    BadGateway:
+      description: پاسخ معتبر از سرویس پرداخت دریافت نشد.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Message'
+  schemas:
+    PostWrite:
+      type: object
+      required:
+        - title
+        - slug
+        - excerpt
+        - body
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        slug:
+          type: string
+          pattern: ^[a-zA-Z0-9_-]+$
+          maxLength: 255
+        excerpt:
+          type: string
+        body:
+          type: string
+        image:
+          type:
+            - string
+            - 'null'
+          maxLength: 2048
+        published_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 80
+          maxItems: 30
+          uniqueItems: true
+          description: تگ‌های قابل ویرایش؛ برای محتوای جدید با تگ خالی، عنوان کوتاه‌شده به عنوان تگ اولیه ساخته می‌شود.
+      example:
+        title: مقاله نمونه
+        slug: sample-post
+        excerpt: خلاصه مقاله
+        body: متن مقاله
+        published_at: null
+    RegisterRequest:
+      type: object
+      required:
+        - name
+        - email
+        - password
+      properties:
+        name:
+          type: string
+          maxLength: 100
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+      example:
+        name: کاربر نمونه
+        email: customer@example.com
+        password: ExamplePass123!
+    LoginRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+      example:
+        email: customer@example.com
+        password: ExamplePass123!
+    AuthPayload:
+      type: object
+      required:
+        - user
+        - token
+        - expires_at
+      properties:
+        user:
+          $ref: '#/components/schemas/User'
+        token:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+    User:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        is_admin:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+    Category:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type:
+            - string
+            - 'null'
+        image:
+          type:
+            - string
+            - 'null'
+        is_active:
+          type: boolean
+        sort_order:
+          type: integer
+        products_count:
+          type: integer
+        parent_id:
+          type:
+            - integer
+            - 'null'
+          description: شناسه دسته والد؛ null برای دسته اصلی. ساخت حلقه مجاز نیست.
+    CategoryWrite:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        slug:
+          type: string
+          maxLength: 255
+        description:
+          type:
+            - string
+            - 'null'
+        image:
+          type:
+            - string
+            - 'null'
+          maxLength: 2048
+        is_active:
+          type: boolean
+        sort_order:
+          type: integer
+          minimum: 0
+        parent_id:
+          type:
+            - integer
+            - 'null'
+          description: شناسه دسته والد؛ null برای دسته اصلی. ساخت حلقه مجاز نیست.
+    Product:
+      type: object
+      properties:
+        id:
+          type: integer
+        category_id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        sku:
+          type: string
+        summary:
+          type:
+            - string
+            - 'null'
+        description:
+          type:
+            - string
+            - 'null'
+        specifications:
+          type:
+            - array
+            - 'null'
+          items:
+            $ref: '#/components/schemas/ProductSpecification'
+        additional_description:
+          type:
+            - string
+            - 'null'
+        usage:
+          type:
+            - string
+            - 'null'
+        price:
+          type: integer
+        old_price:
+          type:
+            - integer
+            - 'null'
+        stock:
+          type: integer
+        rating:
+          type: number
+        image:
+          type:
+            - string
+            - 'null'
+        gallery:
+          type:
+            - array
+            - 'null'
+          items:
+            type: string
+        is_featured:
+          type: boolean
+        is_active:
+          type: boolean
+        category:
+          $ref: '#/components/schemas/Category'
+        views_count:
+          type: integer
+        comments:
+          type: array
+          items:
+            $ref: '#/components/schemas/Comment'
+        has_variants:
+          type: boolean
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductVariant'
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 80
+          maxItems: 30
+          uniqueItems: true
+          description: تگ‌های قابل ویرایش؛ برای محتوای جدید با تگ خالی، عنوان کوتاه‌شده به عنوان تگ اولیه ساخته می‌شود.
+    ProductWrite:
+      type: object
+      properties:
+        category_id:
+          type: integer
+        name:
+          type: string
+          maxLength: 255
+        slug:
+          type: string
+          maxLength: 255
+        sku:
+          type: string
+          maxLength: 100
+        summary:
+          type:
+            - string
+            - 'null'
+        description:
+          type:
+            - string
+            - 'null'
+        specifications:
+          type:
+            - array
+            - 'null'
+          items:
+            $ref: '#/components/schemas/ProductSpecification'
+        additional_description:
+          type:
+            - string
+            - 'null'
+        usage:
+          type:
+            - string
+            - 'null'
+        price:
+          type: integer
+          minimum: 0
+        old_price:
+          type:
+            - integer
+            - 'null'
+          minimum: 0
+        stock:
+          type: integer
+          minimum: 0
+        rating:
+          type:
+            - number
+            - 'null'
+          minimum: 0
+          maximum: 5
+        image:
+          type:
+            - string
+            - 'null'
+          maxLength: 2048
+        gallery:
+          type:
+            - array
+            - 'null'
+          items: {}
+        is_featured:
+          type: boolean
+        is_active:
+          type: boolean
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductVariantWrite'
+          maxItems: 200
+          description: >-
+            آرایه جایگزین تمام تنوع‌ها؛ id تنوع موجود را حفظ کنید. آرایه خالی محصول را ساده می‌کند؛ نبود فیلد
+            در PATCH تنوع‌ها را تغییر نمی‌دهد.
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 80
+          maxItems: 30
+          uniqueItems: true
+          description: تگ‌های قابل ویرایش؛ برای محتوای جدید با تگ خالی، عنوان کوتاه‌شده به عنوان تگ اولیه ساخته می‌شود.
+        marketplaces:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketplaceWrite'
+          maxItems: 4
+          description: >-
+            اطلاعات اختصاصی محصول در پلتفرم؛ کلیدها فقط از env خوانده می‌شوند. نبود این فیلد در PATCH اطلاعات
+            قبلی را حفظ می‌کند.
+    ProductSpecification:
+      type: object
+      required:
+        - label
+        - value
+      properties:
+        label:
+          type: string
+          maxLength: 100
+        value:
+          type: string
+          maxLength: 500
+    OrderStatus:
+      type: string
+      enum:
+        - pending
+        - paid
+        - processing
+        - shipped
+        - delivered
+        - cancelled
+    PaymentMethod:
+      type: string
+      enum:
+        - online
+        - cash_on_delivery
+    PaymentStatus:
+      type: string
+      enum:
+        - unpaid
+        - pending
+        - paid
+        - failed
+        - refunded
+    OrderItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        product_id:
+          type: integer
+        product_name:
+          type: string
+        quantity:
+          type: integer
+        unit_price:
+          type: integer
+        total:
+          type: integer
+        order_id:
+          type: integer
+        product:
+          $ref: '#/components/schemas/Product'
+        variant_id:
+          type:
+            - integer
+            - 'null'
+        variant_sku:
+          type:
+            - string
+            - 'null'
+        selected_attributes:
+          type:
+            - object
+            - 'null'
+          additionalProperties:
+            type: string
+          description: نسخه ثابت ویژگی‌های انتخاب‌شده در زمان سفارش
+        variant:
+          anyOf:
+            - $ref: '#/components/schemas/ProductVariant'
+            - type: 'null'
+    Order:
+      type: object
+      properties:
+        id:
+          type: integer
+        public_id:
+          type: string
+        customer_name:
+          type: string
+        phone:
+          type: string
+        address:
+          type: string
+        status:
+          $ref: '#/components/schemas/OrderStatus'
+        payment_method:
+          $ref: '#/components/schemas/PaymentMethod'
+        payment_status:
+          $ref: '#/components/schemas/PaymentStatus'
+        subtotal:
+          type: integer
+        shipping:
+          type: integer
+        total:
+          type: integer
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/OrderItem'
+        user_id:
+          type:
+            - integer
+            - 'null'
+        user:
+          anyOf:
+            - $ref: '#/components/schemas/User'
+            - type: 'null'
+        payment_reference:
+          type:
+            - string
+            - 'null'
+        paid_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    CreateOrderRequest:
+      type: object
+      required:
+        - customer_name
+        - phone
+        - address
+        - payment_method
+        - items
+      properties:
+        customer_name:
+          type: string
+          maxLength: 100
+        phone:
+          type: string
+          maxLength: 20
+        address:
+          type: string
+          maxLength: 1000
+        payment_method:
+          $ref: '#/components/schemas/PaymentMethod'
+        items:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required:
+              - product_id
+              - quantity
+            properties:
+              product_id:
+                type: integer
+              quantity:
+                type: integer
+                minimum: 1
+                maximum: 20
+              variant_id:
+                type:
+                  - integer
+                  - 'null'
+                description: برای محصول متنوع اجباری و متعلق به همان محصول باشد.
+      example:
+        customer_name: کاربر نمونه
+        phone: '09120000000'
+        address: تهران، آدرس نمونه
+        payment_method: online
+        items:
+          - product_id: 1
+            quantity: 1
+    Dashboard:
+      type: object
+      properties:
+        products:
+          type: integer
+        low_stock:
+          type: integer
+        orders:
+          type: integer
+        revenue:
+          type: integer
+        latest_orders:
+          type: array
+          items:
+            $ref: '#/components/schemas/Order'
+    Pagination:
+      type: object
+      properties:
+        current_page:
+          type: integer
+        last_page:
+          type: integer
+        per_page:
+          type: integer
+        total:
+          type: integer
+        from:
+          type:
+            - integer
+            - 'null'
+        to:
+          type:
+            - integer
+            - 'null'
+        path:
+          type: string
+        first_page_url:
+          type: string
+        last_page_url:
+          type: string
+        next_page_url:
+          type:
+            - string
+            - 'null'
+        prev_page_url:
+          type:
+            - string
+            - 'null'
+        links:
+          type: array
+          items:
+            type: object
+            properties:
+              url:
+                type:
+                  - string
+                  - 'null'
+              label:
+                type: string
+              active:
+                type: boolean
+    ProductPage:
+      allOf:
+        - $ref: '#/components/schemas/Pagination'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Product'
+    OrderPage:
+      allOf:
+        - $ref: '#/components/schemas/Pagination'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Order'
+    UserPage:
+      allOf:
+        - $ref: '#/components/schemas/Pagination'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/User'
+    Message:
+      type: object
+      properties:
+        message:
+          type: string
+    ValidationError:
+      type: object
+      properties:
+        message:
+          type: string
+        errors:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+    Post:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+          maxLength: 255
+        slug:
+          type: string
+          pattern: ^[a-zA-Z0-9_-]+$
+          maxLength: 255
+        excerpt:
+          type: string
+        body:
+          type: string
+        image:
+          type:
+            - string
+            - 'null'
+          maxLength: 2048
+        published_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+        views_count:
+          type: integer
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 80
+          maxItems: 30
+          uniqueItems: true
+          description: تگ‌های قابل ویرایش؛ برای محتوای جدید با تگ خالی، عنوان کوتاه‌شده به عنوان تگ اولیه ساخته می‌شود.
+    Comment:
+      type: object
+      properties:
+        id:
+          type: integer
+        product_id:
+          type: integer
+        user_id:
+          type:
+            - integer
+            - 'null'
+        name:
+          type: string
+        rating:
+          type: integer
+          minimum: 1
+          maximum: 5
+        body:
+          type: string
+        is_approved:
+          type: boolean
+        product:
+          $ref: '#/components/schemas/Product'
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+    CartItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        cart_id:
+          type: integer
+        product_id:
+          type: integer
+        quantity:
+          type: integer
+        product:
+          $ref: '#/components/schemas/Product'
+        variant_id:
+          type:
+            - integer
+            - 'null'
+        variant:
+          anyOf:
+            - $ref: '#/components/schemas/ProductVariant'
+            - type: 'null'
+        unit_price:
+          type: integer
+        available_stock:
+          type: integer
+        selected_attributes:
+          type: object
+          additionalProperties:
+            type: string
+    Cart:
+      type: object
+      properties:
+        id:
+          type: integer
+        token:
+          type: string
+          format: uuid
+        user_id:
+          type:
+            - integer
+            - 'null'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CartItem'
+    ProductCreate:
+      type: object
+      properties:
+        category_id:
+          type: integer
+        name:
+          type: string
+          maxLength: 255
+        slug:
+          type: string
+          maxLength: 255
+        sku:
+          type: string
+          maxLength: 100
+        summary:
+          type:
+            - string
+            - 'null'
+        description:
+          type:
+            - string
+            - 'null'
+        specifications:
+          type:
+            - array
+            - 'null'
+          items:
+            $ref: '#/components/schemas/ProductSpecification'
+        additional_description:
+          type:
+            - string
+            - 'null'
+        usage:
+          type:
+            - string
+            - 'null'
+        price:
+          type: integer
+          minimum: 0
+        old_price:
+          type:
+            - integer
+            - 'null'
+          minimum: 0
+        stock:
+          type: integer
+          minimum: 0
+        rating:
+          type:
+            - number
+            - 'null'
+          minimum: 0
+          maximum: 5
+        image:
+          type:
+            - string
+            - 'null'
+          maxLength: 2048
+        gallery:
+          type:
+            - array
+            - 'null'
+          items: {}
+        is_featured:
+          type: boolean
+        is_active:
+          type: boolean
+        variants:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProductVariantWrite'
+          maxItems: 200
+          description: >-
+            آرایه جایگزین تمام تنوع‌ها؛ id تنوع موجود را حفظ کنید. آرایه خالی محصول را ساده می‌کند؛ نبود فیلد
+            در PATCH تنوع‌ها را تغییر نمی‌دهد.
+        tags:
+          type: array
+          items:
+            type: string
+            maxLength: 80
+          maxItems: 30
+          uniqueItems: true
+          description: تگ‌های قابل ویرایش؛ برای محتوای جدید با تگ خالی، عنوان کوتاه‌شده به عنوان تگ اولیه ساخته می‌شود.
+        marketplaces:
+          type: array
+          items:
+            $ref: '#/components/schemas/MarketplaceWrite'
+          maxItems: 4
+          description: >-
+            اطلاعات اختصاصی محصول در پلتفرم؛ کلیدها فقط از env خوانده می‌شوند. نبود این فیلد در PATCH اطلاعات
+            قبلی را حفظ می‌کند.
+      required:
+        - category_id
+        - name
+        - slug
+        - sku
+        - price
+        - stock
+      example:
+        category_id: 1
+        name: محصول نمونه
+        slug: sample-product
+        sku: SAMPLE-001
+        price: 250000
+        stock: 20
+        is_active: true
+    CategoryCreate:
+      type: object
+      properties:
+        name:
+          type: string
+          maxLength: 255
+        slug:
+          type: string
+          maxLength: 255
+        description:
+          type:
+            - string
+            - 'null'
+        image:
+          type:
+            - string
+            - 'null'
+          maxLength: 2048
+        is_active:
+          type: boolean
+        sort_order:
+          type: integer
+          minimum: 0
+        parent_id:
+          type:
+            - integer
+            - 'null'
+          description: شناسه دسته والد؛ null برای دسته اصلی. ساخت حلقه مجاز نیست.
+      required:
+        - name
+        - slug
+      example:
+        name: مکمل‌ها
+        slug: supplements
+        is_active: true
+    PostPage:
+      allOf:
+        - $ref: '#/components/schemas/Pagination'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Post'
+    CommentPage:
+      allOf:
+        - $ref: '#/components/schemas/Pagination'
+        - type: object
+          properties:
+            data:
+              type: array
+              items:
+                $ref: '#/components/schemas/Comment'
+    PaymentSession:
+      type: object
+      properties:
+        order_id:
+          type: string
+        amount:
+          type: integer
+        reference:
+          type: string
+        payment_token:
+          type: string
+        mode:
+          type: string
+          const: test
+    ProductVariantWrite:
+      type: object
+      properties:
+        id:
+          type: integer
+        sku:
+          type: string
+          maxLength: 100
+        attributes:
+          type: object
+          minProperties: 1
+          maxProperties: 10
+          additionalProperties:
+            type: string
+            maxLength: 100
+          description: ویژگی‌های دلخواه مثل رنگ، جنس و سایز؛ نام ویژگی‌ها در تمام تنوع‌ها یکسان باشد.
+        price:
+          type: integer
+          minimum: 0
+        old_price:
+          type:
+            - integer
+            - 'null'
+          minimum: 0
+        stock:
+          type: integer
+          minimum: 0
+        is_active:
+          type: boolean
+      required:
+        - sku
+        - attributes
+        - price
+        - stock
+    ProductVariant:
+      type: object
+      properties:
+        id:
+          type: integer
+        sku:
+          type: string
+          maxLength: 100
+        attributes:
+          type: object
+          minProperties: 1
+          maxProperties: 10
+          additionalProperties:
+            type: string
+            maxLength: 100
+          description: ویژگی‌های دلخواه مثل رنگ، جنس و سایز؛ نام ویژگی‌ها در تمام تنوع‌ها یکسان باشد.
+        price:
+          type: integer
+          minimum: 0
+        old_price:
+          type:
+            - integer
+            - 'null'
+          minimum: 0
+        stock:
+          type: integer
+          minimum: 0
+        is_active:
+          type: boolean
+        product_id:
+          type: integer
+      description: >-
+        هر ترکیب ویژگی، SKU، قیمت و موجودی مستقل دارد. تنوع حذف‌شده در ویرایش غیرفعال می‌شود تا تاریخچه حفظ
+        شود.
+    SiteBadgeWrite:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        image_url:
+          type: string
+          format: uri
+          maxLength: 2048
+        link_url:
+          type:
+            - string
+            - 'null'
+          format: uri
+          maxLength: 2048
+        sort_order:
+          type: integer
+          minimum: 0
+        is_active:
+          type: boolean
+      required:
+        - title
+        - image_url
+    SiteBadge:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+          maxLength: 255
+        image_url:
+          type: string
+          format: uri
+          maxLength: 2048
+        link_url:
+          type:
+            - string
+            - 'null'
+          format: uri
+          maxLength: 2048
+        sort_order:
+          type: integer
+          minimum: 0
+        is_active:
+          type: boolean
+    MarketplaceWrite:
+      type: object
+      properties:
+        channel:
+          type: string
+          enum:
+            - torob
+            - basalam
+            - digikala
+            - custom
+        enabled:
+          type: boolean
+        external_id:
+          type:
+            - string
+            - 'null'
+          maxLength: 255
+        settings:
+          type: object
+          properties:
+            category_id:
+              type: integer
+            brand_id:
+              type: integer
+            photo_id:
+              type: integer
+            weight:
+              type: number
+            package_weight:
+              type: integer
+            preparation_days:
+              type: integer
+            product_code:
+              type: string
+            variant_mapping:
+              type: object
+              additionalProperties: true
+      required:
+        - channel
+        - enabled
+    MarketplaceListing:
+      type: object
+      properties:
+        id:
+          type: integer
+        channel:
+          type: string
+          enum:
+            - torob
+            - basalam
+            - digikala
+            - custom
+        enabled:
+          type: boolean
+        external_id:
+          type:
+            - string
+            - 'null'
+          maxLength: 255
+        settings:
+          type: object
+          properties:
+            category_id:
+              type: integer
+            brand_id:
+              type: integer
+            photo_id:
+              type: integer
+            weight:
+              type: number
+            package_weight:
+              type: integer
+            preparation_days:
+              type: integer
+            product_code:
+              type: string
+            variant_mapping:
+              type: object
+              additionalProperties: true
+        status:
+          type: string
+          enum:
+            - not_configured
+            - needs_configuration
+            - simulated
+            - feed_ready
+            - submitted
+            - failed
+            - uncertain
+        last_error:
+          type:
+            - string
+            - 'null'
+        synced_at:
+          type:
+            - string
+            - 'null'
+          format: date-time
+    AdminProduct:
+      allOf:
+        - $ref: '#/components/schemas/Product'
+        - type: object
+          properties:
+            marketplace_listings:
+              type: array
+              items:
+                $ref: '#/components/schemas/MarketplaceListing'
+    MarketplaceChannel:
+      type: object
+      properties:
+        channel:
+          type: string
+        name:
+          type: string
+        enabled:
+          type: boolean
+        fee_model:
+          type: string
+        commission_percent:
+          type:
+            - string
+            - number
+            - 'null'
+        driver:
+          type: string
